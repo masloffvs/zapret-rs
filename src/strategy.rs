@@ -334,38 +334,29 @@ impl StrategyManager {
         for line in bat_content.lines() {
             let line = line.trim();
             
-            // Ищем ссылки на файлы в параметрах nfqws
-            if line.contains("--hostlist=") {
-                if let Some(start) = line.find("--hostlist=\"") {
-                    if let Some(end) = line[start + 12..].find("\"") {
-                        let filename = &line[start + 12..start + 12 + end];
-                        if !filename.is_empty() {
-                            dependencies.push(filename.to_string());
-                        }
-                    }
-                }
-            }
+
             
-            if line.contains("--ipset=") {
-                if let Some(start) = line.find("--ipset=\"") {
-                    if let Some(end) = line[start + 9..].find("\"") {
-                        let filename = &line[start + 9..start + 9 + end];
-                        if !filename.is_empty() {
-                            dependencies.push(filename.to_string());
+            let mut pos = 0;
+            while pos < line.len() {
+                if let Some(start) = line[pos..].find("\"") {
+                    let quote_start = pos + start;
+                    if let Some(end) = line[quote_start + 1..].find("\"") {
+                        let filename = &line[quote_start + 1..quote_start + 1 + end];
+                        
+                        if !filename.is_empty() && !filename.contains(" ") && !filename.contains("=") {
+                            let clean_filename = filename.replace("%BIN%", "bin/");
+                            
+                            if clean_filename.ends_with(".txt") || clean_filename.ends_with(".bin") || clean_filename.starts_with("bin/") {
+                                dependencies.push(clean_filename);
+                            }
                         }
+                        
+                        pos = quote_start + 1 + end + 1;
+                    } else {
+                        break;
                     }
-                }
-            }
-            
-            // Ищем ссылки на bin файлы
-            if line.contains("bin/") {
-                if let Some(start) = line.find("bin/") {
-                    if let Some(end) = line[start..].find("\"") {
-                        let filename = &line[start..start + end];
-                        if !filename.is_empty() {
-                            dependencies.push(filename.to_string());
-                        }
-                    }
+                } else {
+                    break;
                 }
             }
         }
@@ -377,36 +368,29 @@ impl StrategyManager {
         let mut dependencies = Vec::new();
         
         for param in nfqws_params {
-            if param.contains("--hostlist=\"") {
-                if let Some(start) = param.find("--hostlist=\"") {
-                    if let Some(end) = param[start + 12..].find("\"") {
-                        let filename = &param[start + 12..start + 12 + end];
-                        if !filename.is_empty() {
-                            dependencies.push(filename.to_string());
-                        }
-                    }
-                }
-            }
+
             
-            if param.contains("--ipset=\"") {
-                if let Some(start) = param.find("--ipset=\"") {
-                    if let Some(end) = param[start + 9..].find("\"") {
-                        let filename = &param[start + 9..start + 9 + end];
-                        if !filename.is_empty() {
-                            dependencies.push(filename.to_string());
+            let mut pos = 0;
+            while pos < param.len() {
+                if let Some(start) = param[pos..].find("\"") {
+                    let quote_start = pos + start;
+                    if let Some(end) = param[quote_start + 1..].find("\"") {
+                        let filename = &param[quote_start + 1..quote_start + 1 + end];
+                        
+                        if !filename.is_empty() && !filename.contains(" ") && !filename.contains("=") {
+                            let clean_filename = filename.replace("%BIN%", "bin/");
+                            
+                            if clean_filename.ends_with(".txt") || clean_filename.ends_with(".bin") || clean_filename.starts_with("bin/") {
+                                dependencies.push(clean_filename);
+                            }
                         }
+                        
+                        pos = quote_start + 1 + end + 1;
+                    } else {
+                        break;
                     }
-                }
-            }
-            
-            if param.contains("bin/") {
-                if let Some(start) = param.find("bin/") {
-                    if let Some(end) = param[start..].find("\"") {
-                        let filename = &param[start..start + end];
-                        if !filename.is_empty() {
-                            dependencies.push(filename.to_string());
-                        }
-                    }
+                } else {
+                    break;
                 }
             }
         }
