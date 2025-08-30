@@ -48,7 +48,7 @@ pub struct ZapretFramework {
 impl ZapretFramework {
     pub fn new() -> Self {
         let base_dir = env::current_dir().unwrap().to_string_lossy().to_string();
-        let nfqws_path = format!("{}/nfqws", base_dir);
+        let nfqws_path = format!("{}/bin/nfqws", base_dir);
         let stop_script = format!("{}/stop_and_clean_nft.sh", base_dir);
         
         let conf = crate::conf::Conf::load("conf.json");
