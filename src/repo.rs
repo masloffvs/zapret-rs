@@ -2,6 +2,7 @@ use std::fs;
 use std::path::Path;
 use std::process::Command;
 use serde::{Deserialize, Serialize};
+use chrono;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RepoEntry {
@@ -20,6 +21,20 @@ pub struct RepoManager {
 impl RepoManager {
     pub fn new(base_dir: &str) -> Self {
         let repo_list_path = format!("{}/repo.list", base_dir);
+        let repo_list_default_path = format!("{}/repo.list.default", base_dir);
+        
+        // Если repo.list не существует, но есть repo.list.default, копируем его
+        if !Path::new(&repo_list_path).exists() && Path::new(&repo_list_default_path).exists() {
+            if let Ok(content) = fs::read_to_string(&repo_list_default_path) {
+                if let Err(e) = fs::write(&repo_list_path, content) {
+                    eprintln!("Warning: Failed to create repo.list from default: {}", e);
+                } else {
+                    println!("[{}] Created repo.list from repo.list.default", 
+                        chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"));
+                }
+            }
+        }
+        
         Self {
             base_dir: base_dir.to_string(),
             repo_list_path,
