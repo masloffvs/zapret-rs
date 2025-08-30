@@ -46,7 +46,7 @@ pub struct StrategyManager {
 
 impl StrategyManager {
     pub fn new(base_dir: &str) -> Self {
-        let strategies_dir = format!("{}/strategies", base_dir);
+        let strategies_dir = format!("{}/data/strategies", base_dir);
         Self {
             base_dir: base_dir.to_string(),
             strategies_dir,

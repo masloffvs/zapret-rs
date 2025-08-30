@@ -20,16 +20,25 @@ pub struct RepoManager {
 
 impl RepoManager {
     pub fn new(base_dir: &str) -> Self {
-        let repo_list_path = format!("{}/repo.list", base_dir);
+        let repo_list_path = format!("{}/data/repo.list", base_dir);
         let repo_list_default_path = format!("{}/repo.list.default", base_dir);
         
-        // Если repo.list не существует, но есть repo.list.default, копируем его
+        let data_dir = format!("{}/data", base_dir);
+        if !Path::new(&data_dir).exists() {
+            if let Err(e) = fs::create_dir_all(&data_dir) {
+                eprintln!("Warning: Failed to create data directory: {}", e);
+            } else {
+                println!("[{}] Created data directory: {}", 
+                    chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"), data_dir);
+            }
+        }
+        
         if !Path::new(&repo_list_path).exists() && Path::new(&repo_list_default_path).exists() {
             if let Ok(content) = fs::read_to_string(&repo_list_default_path) {
                 if let Err(e) = fs::write(&repo_list_path, content) {
                     eprintln!("Warning: Failed to create repo.list from default: {}", e);
                 } else {
-                    println!("[{}] Created repo.list from repo.list.default", 
+                    println!("[{}] Created repo.list from repo.list.default in data/", 
                         chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"));
                 }
             }

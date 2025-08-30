@@ -20,6 +20,14 @@ impl Conf {
   }
 
   pub fn load(file_path: &str) -> ConfResult {
+    if let Some(parent) = std::path::Path::new(file_path).parent() {
+        if !parent.exists() {
+            if let Err(e) = fs::create_dir_all(parent) {
+                eprintln!("Warning: Failed to create directory {}: {}", parent.display(), e);
+            }
+        }
+    }
+    
     if !fs::metadata(file_path).is_ok() {
       return ConfResult { is_fallback: true, conf: Self::new("".to_string(), false, "".to_string()) };
     }
