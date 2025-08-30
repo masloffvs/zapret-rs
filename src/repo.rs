@@ -63,48 +63,84 @@ impl RepoManager {
         let repo_dir = format!("{}/repos/{}", self.base_dir, repo.name);
 
         if Path::new(&repo_dir).exists() {
-            self.log(&format!("Updating repository: {}", repo.name));
-            Command::new("git")
+            self.log(&format!("Updating existing repository: {}", repo.name));
+            let output = Command::new("git")
                 .arg("pull")
                 .current_dir(&repo_dir)
                 .output()
                 .unwrap();
+            
+            if output.status.success() {
+                self.log(&format!("Repository {} updated successfully", repo.name));
+            } else {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                self.log(&format!("Warning: git pull failed for {}: {}", repo.name, stderr));
+            }
         } else {
-            self.log(&format!("Cloning repository: {}", repo.name));
+            self.log(&format!("Cloning new repository: {} from {}", repo.name, repo.url));
             fs::create_dir_all(format!("{}/repos", self.base_dir)).unwrap();
             
-            Command::new("git")
+            let output = Command::new("git")
                 .arg("clone")
                 .arg(&repo.url)
                 .arg(&repo_dir)
                 .output()
                 .unwrap();
+                
+            if output.status.success() {
+                self.log(&format!("Repository {} cloned successfully", repo.name));
+            } else {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                self.log(&format!("Error cloning repository {}: {}", repo.name, stderr));
+                return;
+            }
         }
 
         if let Some(branch) = &repo.branch {
-            Command::new("git")
+            self.log(&format!("Checking out branch {} for repository {}", branch, repo.name));
+            let output = Command::new("git")
                 .arg("checkout")
                 .arg(branch)
                 .current_dir(&repo_dir)
                 .output()
                 .unwrap();
+                
+            if output.status.success() {
+                self.log(&format!("Branch {} checked out successfully for {}", branch, repo.name));
+            } else {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                self.log(&format!("Warning: branch checkout failed for {}: {}", repo.name, stderr));
+            }
         }
 
         if let Some(commit) = &repo.commit {
-            Command::new("git")
+            self.log(&format!("Checking out commit {} for repository {}", commit, repo.name));
+            let output = Command::new("git")
                 .arg("checkout")
                 .arg(commit)
                 .current_dir(&repo_dir)
                 .output()
                 .unwrap();
+                
+            if output.status.success() {
+                self.log(&format!("Commit {} checked out successfully for {}", commit, repo.name));
+            } else {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                self.log(&format!("Warning: commit checkout failed for {}: {}", repo.name, stderr));
+            }
         }
+        
+        self.log(&format!("Repository {} processing completed", repo.name));
     }
 
     pub fn update_all(&self) {
         let repos = self.load_repo_list();
-        for repo in repos {
-            self.update_repo(&repo);
+        self.log(&format!("Found {} repositories to process", repos.len()));
+        for (i, repo) in repos.iter().enumerate() {
+            self.log(&format!("Processing repository {}/{}: {}", i + 1, repos.len(), repo.name));
+            self.update_repo(repo);
         }
+        self.log("All repositories processed");
     }
 
     fn log(&self, message: &str) {

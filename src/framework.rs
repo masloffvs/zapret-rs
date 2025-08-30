@@ -92,11 +92,15 @@ impl ZapretFramework {
     }
 
     pub fn setup_repositories(&self) {
+        self.log("Setting up repositories...");
         self.repo_manager.update_all();
+        self.log("Repository setup completed");
     }
 
     pub fn setup_strategies(&self) {
+        self.log("Setting up strategies...");
         self.strategy_manager.update_strategies();
+        self.log("Strategy setup completed");
     }
 
     pub fn setup_nftables(&self, interface: &str, strategy_name: &str) {
@@ -304,8 +308,11 @@ impl ZapretFramework {
 
     pub fn pull_repositories(&self) {
         self.log("Pulling and indexing repositories...");
+        self.log("Starting repository updates...");
         self.setup_repositories();
+        self.log("Repository updates completed, starting strategy indexing...");
         self.setup_strategies();
+        self.log("Strategy indexing completed");
         self.log("Repositories updated successfully");
     }
 

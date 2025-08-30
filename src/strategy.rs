@@ -1,6 +1,7 @@
 use std::fs;
 use std::path::Path;
 use serde::{Deserialize, Serialize};
+use chrono;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StrategyMeta {
@@ -69,22 +70,48 @@ impl StrategyManager {
     pub fn update_strategies(&self) {
         if !Path::new(&self.strategies_dir).exists() {
             fs::create_dir_all(&self.strategies_dir).unwrap();
+            println!("[{}] Created strategies directory: {}", 
+                chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"), self.strategies_dir);
         }
 
         let repos = self.scan_repositories();
+        println!("[{}] Found {} repositories to scan for strategies", 
+            chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"), repos.len());
+            
         for (repo_name, bat_files, json_files) in repos {
+            println!("[{}] Processing repository: {} (BAT: {}, JSON: {})", 
+                chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"), 
+                repo_name, bat_files.len(), json_files.len());
+                
             for bat_file in bat_files {
+                println!("[{}] Processing BAT file: {}", 
+                    chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"), bat_file);
                 if let Some(strategy) = self.parse_bat_file(&repo_name, &bat_file) {
                     self.save_strategy(&strategy);
+                    println!("[{}] Strategy '{}' saved from BAT file", 
+                        chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"), strategy.name);
+                } else {
+                    println!("[{}] Warning: Failed to parse BAT file: {}", 
+                        chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"), bat_file);
                 }
             }
             
             for json_file in json_files {
+                println!("[{}] Processing JSON file: {}", 
+                    chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"), json_file);
                 if let Some(strategy) = self.parse_json_file(&repo_name, &json_file) {
                     self.save_strategy(&strategy);
+                    println!("[{}] Strategy '{}' saved from JSON file", 
+                        chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"), strategy.name);
+                } else {
+                    println!("[{}] Warning: Failed to parse JSON file: {}", 
+                        chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"), json_file);
                 }
             }
         }
+        
+        println!("[{}] Strategy update completed", 
+            chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"));
     }
 
     fn scan_repositories(&self) -> Vec<(String, Vec<String>, Vec<String>)> {

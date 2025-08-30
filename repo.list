@@ -2,4 +2,4 @@
 # Format: name url [branch] [commit]
 # Example: zapret-discord https://github.com/Flowseal/zapret-discord-youtube main dcdb0a3dce0675e3ac8d226a238865e060f8c6be
 
-zapret-discord https://github.com/Flowseal/zapret-discord-youtube
+monorepo https://github.com/masloffvs/zapret-rs-monorepo.git
