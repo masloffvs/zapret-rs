@@ -212,6 +212,11 @@ impl ZapretFramework {
         let strategy = strategy.unwrap();
         let repo_dir = format!("{}/repos/{}", self.base_dir, strategy.repo_name);
 
+        if !Path::new(&repo_dir).exists() {
+            self.handle_error(&format!("Repository directory {} does not exist", repo_dir));
+        }
+
+        self.debug_log(&format!("Changing directory to: {}", repo_dir));
         env::set_current_dir(&repo_dir).unwrap();
 
         for (queue_num, params) in strategy.nfqws_params.iter().enumerate() {
@@ -223,10 +228,13 @@ impl ZapretFramework {
             args.extend(params_split);
 
             self.debug_log(&format!("Starting nfqws with parameters: {} {}", self.nfqws_path, args.join(" ")));
+            self.debug_log(&format!("nfqws_path: {}", self.nfqws_path));
+            self.debug_log(&format!("base_dir: {}", self.base_dir));
 
             let output = Command::new("sudo")
                 .arg(&self.nfqws_path)
                 .args(&args)
+                .current_dir(&self.base_dir)
                 .output()
                 .unwrap();
 

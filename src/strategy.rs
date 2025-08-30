@@ -227,7 +227,10 @@ impl StrategyManager {
         }
 
         let json_content = fs::read_to_string(&json_path).ok()?;
-        let strategy: Strategy = serde_json::from_str(&json_content).ok()?;
+        let mut strategy: Strategy = serde_json::from_str(&json_content).ok()?;
+        
+        // Исправляем repo_name на правильное имя репозитория
+        strategy.repo_name = repo_name.to_string();
 
         Some(strategy)
     }
