@@ -18,6 +18,26 @@ pub struct Strategy {
     pub meta: StrategyMeta,
 }
 
+impl Strategy {
+    pub fn is_valid(&self) -> bool {
+        !self.nft_rules.is_empty() && !self.nfqws_params.is_empty()
+    }
+    
+    pub fn validation_errors(&self) -> Vec<String> {
+        let mut errors = Vec::new();
+        
+        if self.nft_rules.is_empty() {
+            errors.push("Strategy must have at least one nft rule".to_string());
+        }
+        
+        if self.nfqws_params.is_empty() {
+            errors.push("Strategy must have at least one nfqws parameter".to_string());
+        }
+        
+        errors
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct StrategyManager {
     base_dir: String,
@@ -88,8 +108,6 @@ impl StrategyManager {
                     chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"), bat_file);
                 if let Some(strategy) = self.parse_bat_file(&repo_name, &bat_file) {
                     self.save_strategy(&strategy);
-                    println!("[{}] Strategy '{}' saved from BAT file", 
-                        chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"), strategy.name);
                 } else {
                     println!("[{}] Warning: Failed to parse BAT file: {}", 
                         chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"), bat_file);
@@ -101,8 +119,6 @@ impl StrategyManager {
                     chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"), json_file);
                 if let Some(strategy) = self.parse_json_file(&repo_name, &json_file) {
                     self.save_strategy(&strategy);
-                    println!("[{}] Strategy '{}' saved from JSON file", 
-                        chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"), strategy.name);
                 } else {
                     println!("[{}] Warning: Failed to parse JSON file: {}", 
                         chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"), json_file);
@@ -300,8 +316,18 @@ impl StrategyManager {
     }
 
     fn save_strategy(&self, strategy: &Strategy) {
+        if !strategy.is_valid() {
+            let errors = strategy.validation_errors();
+            println!("[{}] Warning: Strategy '{}' is invalid and will be skipped: {}", 
+                chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"), 
+                strategy.name, errors.join(", "));
+            return;
+        }
+        
         let strategy_path = format!("{}/{}.json", self.strategies_dir, strategy.name);
         let json = serde_json::to_string_pretty(strategy).unwrap();
         fs::write(&strategy_path, json).unwrap();
+        println!("[{}] Strategy '{}' saved successfully", 
+            chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"), strategy.name);
     }
 } 
