@@ -20,6 +20,8 @@ impl Conf {
   }
 
   pub fn load(file_path: &str) -> ConfResult {
+    println!("[DEBUG] Conf::load - file_path: {}", file_path);
+    
     if let Some(parent) = std::path::Path::new(file_path).parent() {
         if !parent.exists() {
             if let Err(e) = fs::create_dir_all(parent) {
@@ -29,11 +31,15 @@ impl Conf {
     }
     
     if !fs::metadata(file_path).is_ok() {
+      println!("[DEBUG] Conf::load - file not found, using fallback");
       return ConfResult { is_fallback: true, conf: Self::new("".to_string(), false, "".to_string()) };
     }
 
+    println!("[DEBUG] Conf::load - file found, reading content");
     let conf = fs::read_to_string(file_path).unwrap();
+    println!("[DEBUG] Conf::load - content: {}", conf);
     let conf: Conf = serde_json::from_str(&conf).unwrap();
+    println!("[DEBUG] Conf::load - parsed successfully");
     ConfResult { is_fallback: false, conf }
   }
 

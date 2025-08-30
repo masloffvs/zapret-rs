@@ -16,6 +16,7 @@ pub struct Strategy {
     pub nft_rules: Vec<String>,
     pub nfqws_params: Vec<String>,
     pub meta: StrategyMeta,
+    pub depends: Vec<String>,
 }
 
 impl Strategy {
@@ -47,10 +48,16 @@ pub struct StrategyManager {
 impl StrategyManager {
     pub fn new(base_dir: &str) -> Self {
         let strategies_dir = format!("{}/data/strategies", base_dir);
+        println!("[DEBUG] StrategyManager::new - base_dir: {}", base_dir);
+        println!("[DEBUG] StrategyManager::new - strategies_dir: {}", strategies_dir);
         Self {
             base_dir: base_dir.to_string(),
             strategies_dir,
         }
+    }
+
+    pub fn get_strategies_dir(&self) -> &str {  
+        &self.strategies_dir    
     }
 
     pub fn get_strategy(&self, name: &str) -> Option<Strategy> {
@@ -207,12 +214,15 @@ impl StrategyManager {
         let bat_content = fs::read_to_string(&bat_path).ok()?;
         let (nft_rules, nfqws_params) = self.parse_bat_content(&bat_content);
 
+        let depends = self.extract_dependencies(&bat_content);
+        
         Some(Strategy {
             name: bat_name.to_string(),
             repo_name: repo_name.to_string(),
             description: format!("Strategy from {} repository", repo_name),
             nft_rules,
             nfqws_params,
+            depends,
             meta: StrategyMeta { 
                 version: "1.0".to_string() 
             },
@@ -318,6 +328,92 @@ impl StrategyManager {
         (nft_rules, nfqws_params)
     }
 
+    fn extract_dependencies(&self, bat_content: &str) -> Vec<String> {
+        let mut dependencies = Vec::new();
+        
+        for line in bat_content.lines() {
+            let line = line.trim();
+            
+            // Ищем ссылки на файлы в параметрах nfqws
+            if line.contains("--hostlist=") {
+                if let Some(start) = line.find("--hostlist=\"") {
+                    if let Some(end) = line[start + 12..].find("\"") {
+                        let filename = &line[start + 12..start + 12 + end];
+                        if !filename.is_empty() {
+                            dependencies.push(filename.to_string());
+                        }
+                    }
+                }
+            }
+            
+            if line.contains("--ipset=") {
+                if let Some(start) = line.find("--ipset=\"") {
+                    if let Some(end) = line[start + 9..].find("\"") {
+                        let filename = &line[start + 9..start + 9 + end];
+                        if !filename.is_empty() {
+                            dependencies.push(filename.to_string());
+                        }
+                    }
+                }
+            }
+            
+            // Ищем ссылки на bin файлы
+            if line.contains("bin/") {
+                if let Some(start) = line.find("bin/") {
+                    if let Some(end) = line[start..].find("\"") {
+                        let filename = &line[start..start + end];
+                        if !filename.is_empty() {
+                            dependencies.push(filename.to_string());
+                        }
+                    }
+                }
+            }
+        }
+        
+        dependencies
+    }
+
+    fn extract_dependencies_from_params(&self, nfqws_params: &[String]) -> Vec<String> {
+        let mut dependencies = Vec::new();
+        
+        for param in nfqws_params {
+            if param.contains("--hostlist=\"") {
+                if let Some(start) = param.find("--hostlist=\"") {
+                    if let Some(end) = param[start + 12..].find("\"") {
+                        let filename = &param[start + 12..start + 12 + end];
+                        if !filename.is_empty() {
+                            dependencies.push(filename.to_string());
+                        }
+                    }
+                }
+            }
+            
+            if param.contains("--ipset=\"") {
+                if let Some(start) = param.find("--ipset=\"") {
+                    if let Some(end) = param[start + 9..].find("\"") {
+                        let filename = &param[start + 9..start + 9 + end];
+                        if !filename.is_empty() {
+                            dependencies.push(filename.to_string());
+                        }
+                    }
+                }
+            }
+            
+            if param.contains("bin/") {
+                if let Some(start) = param.find("bin/") {
+                    if let Some(end) = param[start..].find("\"") {
+                        let filename = &param[start..start + end];
+                        if !filename.is_empty() {
+                            dependencies.push(filename.to_string());
+                        }
+                    }
+                }
+            }
+        }
+        
+        dependencies
+    }
+
     fn save_strategy(&self, strategy: &Strategy) {
         if !strategy.is_valid() {
             let errors = strategy.validation_errors();
@@ -330,7 +426,42 @@ impl StrategyManager {
         let strategy_path = format!("{}/{}.json", self.strategies_dir, strategy.name);
         let json = serde_json::to_string_pretty(strategy).unwrap();
         fs::write(&strategy_path, json).unwrap();
+        
+        if !strategy.depends.is_empty() {
+            self.copy_dependencies(strategy);
+        }
+        
         println!("[{}] Strategy '{}' saved successfully", 
             chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"), strategy.name);
+    }
+
+    fn copy_dependencies(&self, strategy: &Strategy) {
+        let strategy_dir = format!("{}/{}", self.strategies_dir, strategy.name);
+        
+        if !Path::new(&strategy_dir).exists() {
+            if let Err(e) = fs::create_dir_all(&strategy_dir) {
+                eprintln!("Warning: Failed to create strategy directory {}: {}", strategy_dir, e);
+                return;
+            }
+        }
+        
+        for dependency in &strategy.depends {
+            let source_path = format!("{}/repos/{}/{}", self.base_dir, strategy.repo_name, dependency);
+            let target_path = format!("{}/{}", strategy_dir, dependency);
+            
+            if Path::new(&source_path).exists() {
+                if let Err(e) = fs::copy(&source_path, &target_path) {
+                    eprintln!("Warning: Failed to copy dependency {}: {}", dependency, e);
+                } else {
+                    println!("[{}] Copied dependency {} for strategy {}", 
+                        chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"), 
+                        dependency, strategy.name);
+                }
+            } else {
+                println!("[{}] Warning: Dependency {} not found for strategy {}", 
+                    chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"), 
+                    dependency, strategy.name);
+            }
+        }
     }
 } 

@@ -51,7 +51,7 @@ impl ZapretFramework {
         let nfqws_path = format!("{}/bin/nfqws", base_dir);
         let stop_script = format!("{}/stop_and_clean_nft.sh", base_dir);
         
-        let conf = crate::conf::Conf::load("data/conf.json");
+        let conf = crate::conf::Conf::load(&format!("{}/data/conf.json", base_dir));
         let repo_manager = RepoManager::new(&base_dir);
         let strategy_manager = StrategyManager::new(&base_dir);
         
@@ -108,7 +108,7 @@ impl ZapretFramework {
         
         let strategy = self.strategy_manager.get_strategy(strategy_name);
         if strategy.is_none() {
-            self.handle_error(&format!("Strategy {} not found", strategy_name));
+            self.handle_error(&format!("Strategy {} not found. Looking in {} directory", strategy_name, self.strategy_manager.get_strategies_dir()));
         }
 
         let strategy = strategy.unwrap();
@@ -206,7 +206,7 @@ impl ZapretFramework {
 
         let strategy = self.strategy_manager.get_strategy(strategy_name);
         if strategy.is_none() {
-            self.handle_error(&format!("Strategy {} not found", strategy_name));
+            self.handle_error(&format!("Strategy {} not found. Looking in {} directory", strategy_name, self.strategy_manager.get_strategies_dir()));
         }
 
         let strategy = strategy.unwrap();
