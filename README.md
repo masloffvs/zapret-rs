@@ -1,69 +1,38 @@
-# !!! Внимание, это stable2 ветка. !!!
-
-На ней я захардкодил последний рабочий конфиг от Flowseal на коммите dcdb0a3dce0675e3ac8d226a238865e060f8c6be. Соотвественнно новые стратегии пока не подтягиваются.
-Если кто отдебажит, то можете лить Pull request на мастер ветку.
-Обсуждение по проблемме предалагаю вести [тут](https://github.com/Sergeydigl3/zapret-discord-youtube-linux/issues/33).
-Включать автообновление пока не имеет смысла, так как захардкожена [эта](https://github.com/Flowseal/zapret-discord-youtube/commit/dcdb0a3dce0675e3ac8d226a238865e060f8c6be) версия.
-
-Сам доберусь до апдейтов вероятно не скоро.
-
-Также можете попробовать [эту](https://github.com/Snowy-Fluffy/zapret.installer) версию от Snowy-Fluffy
-
-# Что это?
-
-Это адаптер для запуска популярных конфигураций обхода замедления YouTube  
-на базе [Zapret Discord Youtube Flowseal](https://github.com/Flowseal/zapret-discord-youtube).  
-Скрипт создан за пару вечеров с целью сделать его Plug-And-Play.
-
-**Проверено на:**  
-- Ubuntu 24.04
-- Arch Linux
+<div align="center">
+  <img src="zapret.png" alt="Zapret Logo" width="200"/>
+</div>
 
 ---
+
+### Добро пожаловать в zapret-rs
+Небольшой проект zapret-rs создается и поддерживается мною для простоты развертывания и управления стратегиями zapret. Унифицируя всю логику в одном месте. Правила для стратегий код преобразует в нифицированные json файлы. Он так же умеет работать с бат файлами и преобразовывать их в json файлы. Repo - модуль для работы с репозиториями. Синтаксис файла repo.list очень простой: название репозитория, url репозитория. Если нужно, то можно указать branch и commit. Весь опыт работы с sources.list из Ubuntu/Debian тут применим. Изначательно сея код - форк  Sergeydigl3/zapret-discord-youtube-linux. Возможно, проект будет развиваться и станет более универсальным.
+
 
 # Как запустить
 
 1. **Клонирование репозитория и запуск основного скрипта:**
 
    ```bash
-   git clone https://github.com/Sergeydigl3/zapret-discord-youtube-linux.git
-   cd zapret-discord-youtube-linux
-   sudo bash main_script.sh
+   git clone https://github.com/masloffvs/zapret-rs.git
+   cd zapret-rs
+   git checkout stable2
+   cargo build --release
+   cp target/release/zapret-rs ./zapret-rs
+   ./zapret-rs start
    ```
-
-   Скрипт:
-   - Спросит, нужно ли обновление (если папка zapret-latest уже существует).
-   - Предложит выбрать стратегию из bat-файлов (например, `general.bat`, `general_mgts2.bat`, `general_alt5.bat`).  
-     (При этом bat-файлы автоматически переименовываются через `rename_bat.sh`.)
-   - Попросит выбрать сетевой интерфейс.
 
 2. **Сохранение параметров:**
 
-   Ответы можно сохранить в файле `conf.env` и потом запускать скрипт в неинтерактивном режиме:
+   Ответы можно сохранить в файле `conf.json`.
+   Пример содержимого файла `conf.json`:
    
    ```bash
-   sudo bash main_script.sh -nointeractive
+   {
+     "strategy": "general",
+     "auto_update": false,
+     "interface": "wlp82s0"
+   }
    ```
-   
-   Для отладки парсинга используйте флаг `-debug`.
-
-   Пример содержимого файла `conf.env`:
-   
-   ```bash
-   strategy=general.bat
-   auto_update=false
-   interface=enp0s3
-   ```
-   
-   > **Примечание:** Если требуется автообновление, установите auto_update=true.
-
-3. **Как посмотреть список интерфейсов:**
-
-   ```bash
-   ls /sys/class/net
-   ```
-
----
 
 # Важно
 
@@ -71,51 +40,8 @@
 - При остановке скрипта все добавленные правила фаервола очищаются, а фоновые процессы `nfqws` останавливаются.
 - Если у вас настроены кастомные правила в nftables, сделайте их резервное копирование — скрипт может удалить их при запуске.
 
----
+
 
 # Автозагрузка
+Пока ее нет =( 
 
-Для настройки автозагрузки сервиса запустите скрипт:
-
-```bash
-sudo bash service.sh
-```
-
-Скрипт service.sh теперь:
-- Проверяет наличие файла `conf.env` и обязательных непустых полей.
-- Если конфиг отсутствует или поля пустые (например, если у вас:
-  ```
-  strategy=
-  auto_update=
-  interface=
-  ```
-  ), то предложит интерактивно выбрать параметры (интерфейс, стратегию из bat-файлов и автообновление).
-- Создаёт systemd-сервис для автозапуска.
-
-Просмотреть статус сервиса можно командой:
-
-```bash
-systemctl status zapret_discord_youtube.service
-```
-
-Посмотреть логи сервиса:
-
-```bash
-journalctl -u zapret_discord_youtube.service
-```
-
-Значения для автозагрузки берутся из файла `conf.env`.
-
----
-
-# Совет
-
-- **Не включайте автоапгрейд.**  
-  Если репозиторий [Flowseal/zapret-discord-youtube](https://github.com/Flowseal/zapret-discord-youtube) сильно изменится, возможны проблемы из-за костыльного кода парсинга)
-
----
-
-# Поддержка
-
-- Если есть идеи по улучшению — создавайте Pull Request (например, добавить поддержку iptables).
-- Если что-то не работает, создавайте Issue (пожалуйста, не пишите в личные сообщения) — так мы сможем помочь как можно большему числу пользователей.
