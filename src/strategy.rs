@@ -3,12 +3,18 @@ use std::path::Path;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StrategyMeta {
+    pub version: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Strategy {
     pub name: String,
     pub repo_name: String,
     pub description: String,
     pub nft_rules: Vec<String>,
     pub nfqws_params: Vec<String>,
+    pub meta: StrategyMeta,
 }
 
 #[derive(Debug, Clone)]
@@ -100,6 +106,27 @@ impl StrategyManager {
         repos
     }
 
+
+    fn find_json_files(&self, repo_path: &Path) -> Vec<String> {
+        let mut json_files = Vec::new();
+        
+        if let Ok(entries) = fs::read_dir(repo_path) {
+            for entry in entries {
+                if let Ok(entry) = entry {
+                    if let Some(ext) = entry.path().extension() {
+                        if ext == "json" {
+                            if let Some(name) = entry.path().file_stem() {
+                                json_files.push(name.to_string_lossy().to_string());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        json_files
+    }
+
     fn find_bat_files(&self, repo_path: &Path) -> Vec<String> {
         let mut bat_files = Vec::new();
         
@@ -136,6 +163,9 @@ impl StrategyManager {
             description: format!("Strategy from {} repository", repo_name),
             nft_rules,
             nfqws_params,
+            meta: StrategyMeta { 
+                version: "1.0".to_string() 
+            },
         })
     }
 
