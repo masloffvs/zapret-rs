@@ -1,1 +1,7 @@
 zapret-latest
+
+/target
+conf.*
+strategies
+repos
+conf.json
