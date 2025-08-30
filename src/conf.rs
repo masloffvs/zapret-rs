@@ -1,0 +1,36 @@
+use serde::{Deserialize, Serialize};
+use std::fs;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Conf {
+  pub interface: String,
+  pub auto_update: bool,
+  pub strategy: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConfResult {
+  pub is_fallback: bool,
+  pub conf: Conf,
+}
+
+impl Conf {
+  pub fn new(interface: String, auto_update: bool, strategy: String) -> Self {
+    Self { interface, auto_update, strategy }
+  }
+
+  pub fn load(file_path: &str) -> ConfResult {
+    if !fs::metadata(file_path).is_ok() {
+      return ConfResult { is_fallback: true, conf: Self::new("".to_string(), false, "".to_string()) };
+    }
+
+    let conf = fs::read_to_string(file_path).unwrap();
+    let conf: Conf = serde_json::from_str(&conf).unwrap();
+    ConfResult { is_fallback: false, conf }
+  }
+
+  pub fn save(self, file_path: &str) {
+    let conf = serde_json::to_string(&self).unwrap();
+    fs::write(file_path, conf).unwrap();
+  }
+}
