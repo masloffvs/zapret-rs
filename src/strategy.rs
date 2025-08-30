@@ -72,16 +72,22 @@ impl StrategyManager {
         }
 
         let repos = self.scan_repositories();
-        for (repo_name, bat_files) in repos {
+        for (repo_name, bat_files, json_files) in repos {
             for bat_file in bat_files {
                 if let Some(strategy) = self.parse_bat_file(&repo_name, &bat_file) {
+                    self.save_strategy(&strategy);
+                }
+            }
+            
+            for json_file in json_files {
+                if let Some(strategy) = self.parse_json_file(&repo_name, &json_file) {
                     self.save_strategy(&strategy);
                 }
             }
         }
     }
 
-    fn scan_repositories(&self) -> Vec<(String, Vec<String>)> {
+    fn scan_repositories(&self) -> Vec<(String, Vec<String>, Vec<String>)> {
         let repos_dir = format!("{}/repos", self.base_dir);
         let mut repos = Vec::new();
 
@@ -97,7 +103,8 @@ impl StrategyManager {
                     
                     if repo_path.is_dir() {
                         let bat_files = self.find_bat_files(&repo_path);
-                        repos.push((repo_name, bat_files));
+                        let json_files = self.find_json_files(&repo_path);
+                        repos.push((repo_name, bat_files, json_files));
                     }
                 }
             }
@@ -107,7 +114,7 @@ impl StrategyManager {
     }
 
 
-    fn find_json_files(&self, repo_path: &Path) -> Vec<String> {
+    pub fn find_json_files(&self, repo_path: &Path) -> Vec<String> {
         let mut json_files = Vec::new();
         
         if let Ok(entries) = fs::read_dir(repo_path) {
@@ -167,6 +174,19 @@ impl StrategyManager {
                 version: "1.0".to_string() 
             },
         })
+    }
+
+    fn parse_json_file(&self, repo_name: &str, json_name: &str) -> Option<Strategy> {
+        let json_path = format!("{}/repos/{}/{}.json", self.base_dir, repo_name, json_name);
+        
+        if !Path::new(&json_path).exists() {
+            return None;
+        }
+
+        let json_content = fs::read_to_string(&json_path).ok()?;
+        let strategy: Strategy = serde_json::from_str(&json_content).ok()?;
+
+        Some(strategy)
     }
 
     fn parse_bat_content(&self, bat_content: &str) -> (Vec<String>, Vec<String>) {
