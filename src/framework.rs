@@ -4,7 +4,7 @@ use std::path::Path;
 use std::env;
 use crate::conf::ConfResult;
 use crate::repo::RepoManager;
-use crate::strategy::StrategyManager;
+use crate::strategy::{self, StrategyManager};
 
 #[derive(Debug, Clone)]
 pub struct NetInterface {
@@ -69,11 +69,6 @@ impl ZapretFramework {
         println!("[{}] {}", chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"), message);
     }
 
-    pub fn debug_log(&self, message: &str) {
-        if env::var("DEBUG").is_ok() {
-            println!("[DEBUG] {}", message);
-        }
-    }
 
     pub fn handle_error(&self, message: &str) -> ! {
         self.log(&format!("Error: {}", message));
@@ -84,7 +79,7 @@ impl ZapretFramework {
         let deps = vec!["git", "nft", "grep", "sed"];
         for dep in deps {
             if Command::new("which").arg(dep).output().unwrap().status.success() {
-                self.debug_log(&format!("Utility {} found", dep));
+                self.log(&format!("Utility {} found", dep));
             } else {
                 self.handle_error(&format!("Utility {} not installed", dep));
             }
@@ -95,12 +90,6 @@ impl ZapretFramework {
         self.log("Setting up repositories...");
         self.repo_manager.update_all();
         self.log("Repository setup completed");
-    }
-
-    pub fn setup_strategies(&self) {
-        self.log("Setting up strategies...");
-        self.strategy_manager.update_strategies();
-        self.log("Strategy setup completed");
     }
 
     pub fn setup_nftables(&self, interface: &str, strategy_name: &str) {
@@ -189,7 +178,7 @@ impl ZapretFramework {
             if !output.status.success() {
                 self.log(&format!("Warning: error adding rule for queue {}", queue_num));
             } else {
-                self.debug_log(&format!("Added rule for queue {}: {}", queue_num, rule));
+                self.log(&format!("Added rule for queue {}: {}", queue_num, rule));
             }
         }
     }
@@ -210,14 +199,11 @@ impl ZapretFramework {
         }
 
         let strategy = strategy.unwrap();
-        let repo_dir = format!("{}/repos/{}", self.base_dir, strategy.repo_name);
+        let data_strategies_dir = format!("{}/data/strategies", self.base_dir);
 
-        if !Path::new(&repo_dir).exists() {
-            self.handle_error(&format!("Repository directory {} does not exist", repo_dir));
-        }
+        let nfqws_abs_path = Path::new(&self.nfqws_path).canonicalize().unwrap();
 
-        self.debug_log(&format!("Changing directory to: {}", repo_dir));
-        env::set_current_dir(&repo_dir).unwrap();
+        env::set_current_dir(&data_strategies_dir).unwrap();
 
         for (queue_num, params) in strategy.nfqws_params.iter().enumerate() {
             let queue_num_str = format!("--qnum={}", queue_num);
@@ -227,14 +213,10 @@ impl ZapretFramework {
             let params_split: Vec<&str> = clean_params.split_whitespace().collect();
             args.extend(params_split);
 
-            self.debug_log(&format!("Starting nfqws with parameters: {} {}", self.nfqws_path, args.join(" ")));
-            self.debug_log(&format!("nfqws_path: {}", self.nfqws_path));
-            self.debug_log(&format!("base_dir: {}", self.base_dir));
-
             let output = Command::new("sudo")
-                .arg(&self.nfqws_path)
+                .arg(&nfqws_abs_path)
                 .args(&args)
-                .current_dir(&self.base_dir)
+                .current_dir(&data_strategies_dir)
                 .output()
                 .unwrap();
 
@@ -243,8 +225,9 @@ impl ZapretFramework {
             } else {
                 let stderr = String::from_utf8_lossy(&output.stderr);
                 let stdout = String::from_utf8_lossy(&output.stdout);
-                self.log(&format!("Error starting nfqws for queue {}: stderr: {}, stdout: {}", 
-                    queue_num, stderr, stdout));
+              
+                self.log(&format!("Error starting nfqws (queue {}): stderr: {}, stdout: {}, nfqws_path: {}, args: {}", 
+                    queue_num, stderr, stdout, self.nfqws_path, args.join(" ")));
             }
         }
 
@@ -319,7 +302,6 @@ impl ZapretFramework {
         self.log("Starting repository updates...");
         self.setup_repositories();
         self.log("Repository updates completed, starting strategy indexing...");
-        self.setup_strategies();
         self.log("Strategy indexing completed");
         self.log("Repositories updated successfully");
     }
@@ -342,8 +324,7 @@ impl ZapretFramework {
             self.handle_error("Strategy not specified in configuration or command line");
         }
 
-        self.setup_repositories();
-        self.setup_strategies();
+        // self.setup_repositories();
         self.setup_nftables(interface, strategy);
         self.start_nfqws(interface, strategy);
 

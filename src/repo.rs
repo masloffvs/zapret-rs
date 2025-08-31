@@ -84,7 +84,13 @@ impl RepoManager {
     }
 
     pub fn update_repo(&self, repo: &RepoEntry) {
-        let repo_dir = format!("{}/repos/{}", self.base_dir, repo.name);
+        let repo_dir = format!("{}/data/strategies/{}", self.base_dir, repo.name);
+        // is git?
+        if !Path::new(&repo_dir).join(".git").exists() {
+            self.log(&format!("Repository {} is not a git repository, skipping", repo.name));
+            return;
+        }
+
 
         if Path::new(&repo_dir).exists() {
             self.log(&format!("Updating existing repository: {}", repo.name));
@@ -102,7 +108,7 @@ impl RepoManager {
             }
         } else {
             self.log(&format!("Cloning new repository: {} from {}", repo.name, repo.url));
-            fs::create_dir_all(format!("{}/repos", self.base_dir)).unwrap();
+            fs::create_dir_all(format!("{}/data/strategies", self.base_dir)).unwrap();
             
             let output = Command::new("git")
                 .arg("clone")
