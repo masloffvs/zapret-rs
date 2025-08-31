@@ -199,10 +199,11 @@ impl ZapretFramework {
         }
 
         let strategy = strategy.unwrap();
-        let data_strategies_dir = format!("{}/data/strategies", self.base_dir);
+        let data_strategies_dir = format!("{}/data/strategies/{}", self.base_dir, strategy.repo_name);
 
         let nfqws_abs_path = Path::new(&self.nfqws_path).canonicalize().unwrap();
 
+        println!("[{}] Jumping to {}", chrono::Utc::now().format("%Y-%m-%d %H:%M:%S"), data_strategies_dir);
         env::set_current_dir(&data_strategies_dir).unwrap();
 
         for (queue_num, params) in strategy.nfqws_params.iter().enumerate() {
@@ -299,11 +300,7 @@ impl ZapretFramework {
 
     pub fn pull_repositories(&self) {
         self.log("Pulling and indexing repositories...");
-        self.log("Starting repository updates...");
         self.setup_repositories();
-        self.log("Repository updates completed, starting strategy indexing...");
-        self.log("Strategy indexing completed");
-        self.log("Repositories updated successfully");
     }
 
     pub fn run(&self, strategy_override: Option<&str>) {
@@ -322,6 +319,22 @@ impl ZapretFramework {
 
         if strategy.is_empty() {
             self.handle_error("Strategy not specified in configuration or command line");
+        }
+
+        // checl depends 
+        let strategy_obj = self.strategy_manager.get_strategy(strategy);
+        if strategy_obj.is_none() {
+            self.handle_error(&format!("Strategy {} not found. Looking in {} directory", strategy, self.strategy_manager.get_strategies_dir()));
+        }
+
+        let strategy_obj = strategy_obj.unwrap();
+        let strategies_abs_dir = format!("{}/data/strategies", self.base_dir);
+        let strategies_abs_dir = Path::new(&strategies_abs_dir).canonicalize().unwrap();
+
+        for depend in strategy_obj.depends.iter() {
+            if !Path::new(&strategies_abs_dir).join(&strategy_obj.repo_name).join(depend).exists() {
+                self.handle_error(&format!("Dependency '{}' not found", depend));
+            }
         }
 
         // self.setup_repositories();

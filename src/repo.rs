@@ -86,8 +86,8 @@ impl RepoManager {
     pub fn update_repo(&self, repo: &RepoEntry) {
         let repo_dir = format!("{}/data/strategies/{}", self.base_dir, repo.name);
         // is git?
-        if !Path::new(&repo_dir).join(".git").exists() {
-            self.log(&format!("Repository {} is not a git repository, skipping", repo.name));
+        if  Path::new(&repo_dir).exists() && !Path::new(&repo_dir).join(".git").exists() {
+            self.log(&format!("Repository '{}' in '{}' is not a git repository, skipping", repo.name, repo_dir));
             return;
         }
 
